@@ -4,7 +4,7 @@ const CleanCSS       = require('clean-css')
 const matchMedia     = require('./matchMedia')
 
 
-module.exports = ({ cssFile, mediaOptions }) => {
+module.exports = ({ cssFile, mediaOptions, remBase }) => {
   const output       = {}
   const inputRules   = css.parse(cssFile).stylesheet.rules
   const outputRules  = {
@@ -23,7 +23,7 @@ module.exports = ({ cssFile, mediaOptions }) => {
       isTabletLandscape,
       isTabletPortrait,
       isMobile,
-    } = matchMedia({ mediaQuery: media, mediaOptions })
+    } = matchMedia({ mediaQuery: media, mediaOptions, remBase })
 
     const rule       = inputRules[index]
     const isNoMatch  = !isDesktop && !isTablet && !isMobile

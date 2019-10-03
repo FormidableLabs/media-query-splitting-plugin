@@ -1,17 +1,21 @@
-module.exports = ({ mediaQuery: _mediaQuery = '', mediaOptions }) => {
+function pxToRems(pixels, base) {
+  return pixels / base;
+}
+
+module.exports = ({ mediaQuery: _mediaQuery = '', mediaOptions, remBase }) => {
   const mediaQuery                = _mediaQuery.replace(/:/g, ': ').replace(/,/g, ', ').replace(/  /g, ' ')
 
-  const desktop                   = new RegExp(`(min-width: ${mediaOptions.desktopStart}px)`)
-  const tabletLandscape           = new RegExp(`(min-width: ${mediaOptions.tabletLandscapeStart}px) and (max-width: ${mediaOptions.tabletLandscapeEnd}px)`)
-  const tablet                    = new RegExp(`(min-width: ${mediaOptions.tabletPortraitStart}px) and (max-width: ${mediaOptions.tabletLandscapeEnd}px)`)
-  const tabletPortrait            = new RegExp(`(min-width: ${mediaOptions.tabletPortraitStart}px) and (max-width: ${mediaOptions.tabletPortraitEnd}px)`)
-  const mobile                    = new RegExp(`(max-width: ${mediaOptions.mobileEnd}px)`)
-  const tabletLandscapeAndHigher  = new RegExp(`(min-width: ${mediaOptions.tabletLandscapeStart}px)`)
-  const tabletLandscapeAndLower   = new RegExp(`(max-width: ${mediaOptions.tabletLandscapeEnd}px)`)
-  const exceptMobile              = new RegExp(`(min-width: ${mediaOptions.tabletPortraitStart}px)`)
-  const exceptDesktop             = new RegExp(`(max-width: ${mediaOptions.tabletLandscapeEnd}px)`)
-  const tabletPortraitAndHigher   = new RegExp(`(min-width: ${mediaOptions.tabletPortraitStart}px)`)
-  const tabletPortraitAndLower    = new RegExp(`(max-width: ${mediaOptions.tabletPortraitEnd}px)`)
+  const desktop                   = new RegExp(`(min-width: (${mediaOptions.desktopStart}px)|(${pxToRems(mediaOptions.desktopStart, remBase)}rem))`)
+  const tabletLandscape           = new RegExp(`(min-width: (${mediaOptions.tabletLandscapeStart}px)|(${pxToRems(mediaOptions.tabletLandscapeStart, remBase)}rem)) and (max-width: (${mediaOptions.tabletLandscapeEnd}px)|(${pxToRems(mediaOptions.tabletLandscapeEnd, remBase)}rem))`)
+  const tablet                    = new RegExp(`(min-width: (${mediaOptions.tabletPortraitStart}px)|(${pxToRems(mediaOptions.tabletPortraitStart, remBase)}rem)) and (max-width: (${mediaOptions.tabletLandscapeEnd}px)|(${pxToRems(mediaOptions.tabletLandscapeEnd, remBase)}rem))`)
+  const tabletPortrait            = new RegExp(`(min-width: (${mediaOptions.tabletPortraitStart}px)|(${pxToRems(mediaOptions.tabletPortraitStart, remBase)}rem)) and (max-width: (${mediaOptions.tabletPortraitEnd}px)|(${pxToRems(mediaOptions.tabletPortraitEnd, remBase)}rem))`)
+  const mobile                    = new RegExp(`(max-width: (${mediaOptions.mobileEnd}px)|${pxToRems(mediaOptions.mobileEnd, remBase)}rem)`)
+  const tabletLandscapeAndHigher  = new RegExp(`(min-width: (${mediaOptions.tabletLandscapeStart}px)|(${pxToRems(mediaOptions.tabletLandscapeStart, remBase)}rem))`)
+  const tabletLandscapeAndLower   = new RegExp(`(max-width: (${mediaOptions.tabletLandscapeEnd}px)|(${pxToRems(mediaOptions.tabletLandscapeEnd, remBase)}rem))`)
+  const exceptMobile              = new RegExp(`(min-width: (${mediaOptions.tabletPortraitStart}px)|(${pxToRems(mediaOptions.tabletPortraitStart, remBase)}rem))`)
+  const exceptDesktop             = new RegExp(`(max-width: (${mediaOptions.tabletLandscapeEnd}px)|(${pxToRems(mediaOptions.tabletLandscapeEnd, remBase)}rem))`)
+  const tabletPortraitAndHigher   = new RegExp(`(min-width: (${mediaOptions.tabletPortraitStart}px)|(${pxToRems(mediaOptions.tabletPortraitStart, remBase)}rem))`)
+  const tabletPortraitAndLower    = new RegExp(`(max-width: (${mediaOptions.tabletPortraitEnd}px)|(${pxToRems(mediaOptions.tabletPortraitEnd, remBase)}rem))`)
 
   const isDesktop = (
     desktop.test(mediaQuery)
