@@ -1,11 +1,10 @@
 const css            = require('css')
 const CleanCSS       = require('clean-css')
-
 const matchMedia     = require('./matchMedia')
-
 
 module.exports = ({ cssFile, mediaOptions, remBase }) => {
   const output       = {}
+  const textOutput   = {}
   const inputRules   = css.parse(cssFile).stylesheet.rules
   const outputRules  = {
     common: [],
@@ -14,6 +13,14 @@ module.exports = ({ cssFile, mediaOptions, remBase }) => {
     tabletPortrait: [],
     tabletLandscape: [],
     tablet: [],
+  }
+
+  function addToAll(rule) {
+    outputRules.desktop.push(rule)
+    outputRules.tablet.push(rule)
+    outputRules.tabletLandscape.push(rule)
+    outputRules.tabletPortrait.push(rule)
+    outputRules.mobile.push(rule)
   }
 
   inputRules.forEach(({ type, media }, index) => {
@@ -28,7 +35,7 @@ module.exports = ({ cssFile, mediaOptions, remBase }) => {
     const rule       = inputRules[index]
     const isNoMatch  = !isDesktop && !isTablet && !isMobile
 
-    if (type === 'media') {
+    if (type === 'media' && !isNoMatch) {
       if (isDesktop) {
         outputRules.desktop.push(rule)
       }
@@ -43,42 +50,31 @@ module.exports = ({ cssFile, mediaOptions, remBase }) => {
       if (isMobile) {
         outputRules.mobile.push(rule)
       }
-      if (isNoMatch) {
-        outputRules.common.push(rule)
-      }
     }
     else {
-      outputRules.common.push(rule)
+      addToAll(rule);
     }
   })
 
-  Object.keys(outputRules).forEach((key) => {
-    output[key]      = []
-    const rules      = outputRules[key]
+  Object.keys(outputRules).forEach((mediaType) => {
+    output[mediaType]      = []
+    textOutput[mediaType]  = ''
+    const rules            = outputRules[mediaType]
 
     // Merge duplicates media conditions
     rules.forEach((rule, index) => {
-      const { media, rules, position } = rule
+      output[mediaType].push(rule)
 
-      const mediaIndex = output[key].map(({ media }) => media).indexOf(media)
+      // Stringify styles
+      const style = css.stringify({
+        type: 'stylesheet',
+        stylesheet: { rules: output[mediaType] }
+      })
 
-      if (!media || mediaIndex < 0) {
-        output[key].push(rule)
-      }
-      else {
-        output[key][mediaIndex].rules = output[key][mediaIndex].rules.concat(rules)
-      }
+      // Minify styles
+      textOutput[mediaType] = (new CleanCSS().minify(style)).styles
     })
-
-    // Stringify styles
-    const style = css.stringify({
-      type: 'stylesheet',
-      stylesheet: { rules: output[key] }
-    })
-
-    // Minify styles
-    output[key] = (new CleanCSS().minify(style)).styles
   })
 
-  return output
+  return textOutput
 }
