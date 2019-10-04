@@ -2,10 +2,10 @@ const css            = require('css')
 const CleanCSS       = require('clean-css')
 const matchMedia     = require('./matchMedia')
 
-module.exports = ({ cssFile, mediaOptions, remBase }) => {
+module.exports = ({ cssSource, mediaOptions, remBase }) => {
   const output       = {}
   const textOutput   = {}
-  const inputRules   = css.parse(cssFile).stylesheet.rules
+  const inputRules   = css.parse(cssSource).stylesheet.rules
   const outputRules  = {
     common: [],
     desktop: [],
@@ -52,7 +52,7 @@ module.exports = ({ cssFile, mediaOptions, remBase }) => {
       }
     }
     else {
-      addToAll(rule);
+      addToAll(rule)
     }
   })
 
@@ -61,20 +61,15 @@ module.exports = ({ cssFile, mediaOptions, remBase }) => {
     textOutput[mediaType]  = ''
     const rules            = outputRules[mediaType]
 
-    // Merge duplicates media conditions
-    rules.forEach((rule, index) => {
-      output[mediaType].push(rule)
-
-      // Stringify styles
-      const style = css.stringify({
-        type: 'stylesheet',
-        stylesheet: { rules: output[mediaType] }
-      })
-
-      // Minify styles
-      textOutput[mediaType] = (new CleanCSS().minify(style)).styles
+    const style = css.stringify({
+      type: 'stylesheet',
+      stylesheet: { rules }
     })
+
+    textOutput[mediaType] = (new CleanCSS().minify(style)).styles
   })
+
+  textOutput.common = 'html{}'
 
   return textOutput
 }

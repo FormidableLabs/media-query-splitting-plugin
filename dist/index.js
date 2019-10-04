@@ -168,7 +168,9 @@ module.exports = class MediaQuerySplittingPlugin {
             };
 
             document.addEventListener('DOMContentLoaded', function() {
-              window.addEventListener('resize', resize);
+              console.log('DOMContentLoaded');
+              // todo is this working?
+              window.addEventListener('resize', () => { console.log('resizelistener'); resize() });
               resize();
             });
           `
@@ -215,10 +217,10 @@ module.exports = class MediaQuerySplittingPlugin {
       cssChunks.forEach((chunkName) => {
         const asset                      = compilation.assets[chunkName]
         const child                      = asset.children && asset.children[0]
-        const chunkValue                 = typeof asset.source === 'function' ? asset.source() : (child || asset)._value
-        const splittedValue              = splitByMediaQuery({ cssFile: chunkValue, mediaOptions, remBase })
+        const cssSource                  = typeof asset.source === 'function' ? asset.source() : (child || asset)._value
         const chunkHash                  = chunkName.replace(/\.css$/, '').replace(/.*\./, '')
         const chunkId                    = chunkName.replace(/\..*/, '')
+        const splittedValue              = splitByMediaQuery({ cssSource, mediaOptions, remBase })
 
         Object.keys(splittedValue).forEach((mediaType) => {
           const splittedMediaChunk       = splittedValue[mediaType]
