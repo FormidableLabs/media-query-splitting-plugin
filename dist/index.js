@@ -70,13 +70,14 @@ module.exports = class MediaQuerySplittingPlugin {
       `
     }
 
-    var tryAppendNewMedia = function() {
+    var collectExistingStylesheets = function(chunkIds) {
+      var chunkIds           = {};
+
       var linkElements = Array
         .prototype
         .slice
         .call(document.getElementsByTagName('link'), 0)
         .filter(element => /style_.*?\.css$/.test(element.href));
-      var chunkIds               = {};
       
       for (var i = 0; i < linkElements.length; i++) {
         var chunkHref            = linkElements[i].href.replace(/.*\\//, '');
@@ -99,6 +100,7 @@ module.exports = class MediaQuerySplittingPlugin {
             chunkIds[chunkId].mediaTypes.push(chunkMediaType);
           }
         } else {
+          // todo: this should never be the case after removing it from SSR
           // base stylesheets
           var chunkId            = chunkHref.replace(/\\..*/, '');
           var chunkHash          = chunkHref.replace(/\\.css$/, '').replace('' + chunkId + '.', '');
@@ -114,6 +116,12 @@ module.exports = class MediaQuerySplittingPlugin {
         }
       }
 
+      return chunkIds;
+    };
+
+    var determineLinksToAdd = function(chunkIds) {
+      // go through all of the chunks and make sure we have the appropriate media stylesheets in the document
+      var linkTagsToAdd = [];
       for (var i in chunkIds) {
         if (chunkIds.hasOwnProperty(i)) {
           var isTablet           = /tablet/.test(currentMediaType);
@@ -124,8 +132,6 @@ module.exports = class MediaQuerySplittingPlugin {
           if (!hasCurrentMedia) {
             var fullhref         = '' + chunkIds[i].prefix + '' + i + '.' + currentMediaType + '.' + chunkIds[i].hash + '.css';
             var linkTag          = document.createElement('link');
-            var header           = document.getElementsByTagName('head')[0];
-
             linkTag.rel          = 'stylesheet';
             linkTag.type         = 'text/css';
             linkTag.href         = fullhref;
@@ -145,14 +151,52 @@ module.exports = class MediaQuerySplittingPlugin {
               }
             })(chunkIds))
 
-            header.appendChild(linkTag);
-
+            linkTagsToAdd.push(linkTag);
           }
         }
       }
+
+      return linkTagsToAdd;
+    }
+
+    var tryAppendNewMedia = function(linkTagFromMiniCssPlugin, resolveFromMiniCssPlugin, rejectFromMiniCssPlugin) {
+      var chunkIds           = collectExistingStylesheets();
+
+      if (linkTagFromMiniCssPlugin) {
+        // this is what mini-css-extract-plugin is trying to add.  We don't want to add it and instead add the media specific stylesheet
+        var chunkHref          = linkTagFromMiniCssPlugin.href.replace(/.*\\//, '');
+        var chunkId            = chunkHref.replace(/\\..*/, '');
+        var chunkHash          = chunkHref.replace(/\\.css$/, '').replace('' + chunkId + '.', '');
+        var chunkHrefPrefix    = linkTagFromMiniCssPlugin.href.replace('' + chunkId + '.' + chunkHash + '.css', '');
+
+        if (!chunkIds[chunkId]) {
+          chunkIds[chunkId]    = {
+            mediaTypes: [],
+            hash: chunkHash,
+            prefix: chunkHrefPrefix,
+          }
+        }
+      }
+
+      var linkTagsToAdd = determineLinksToAdd(chunkIds);
+
+      // add the approriate media stylesheets to the document
+      Promise.all(linkTagsToAdd.map(function(linkTagToAdd) {
+        return new Promise(function(res, rej) {
+          linkTagToAdd.onload = res;
+          linkTagToAdd.onerror = rej;
+        });
+      }))
+      .then(resolveFromMiniCssPlugin)
+      .catch(rejectFromMiniCssPlugin);
+
+      var header = document.getElementsByTagName('head')[0];
+      for(var i = 0; i < linkTagsToAdd.length; i++) {
+        header.appendChild(linkTagsToAdd[i]);
+      }
     };
 
-    var resize = function() {
+    var determineMediaType = function(linkTag, resolve, reject) {
       var newMediaType
       var mediaType              = getMediaType();
 
@@ -179,14 +223,13 @@ module.exports = class MediaQuerySplittingPlugin {
         currentMediaType         = newMediaType;
       }
       
-      tryAppendNewMedia()
+      tryAppendNewMedia(linkTag, resolve, reject)
     };
 
-
-    var resizeListener = debounce(resize, 250);
+    var resizeListener = debounce(determineMediaType, 250);
 
     if(!window._MEDIA_CSS_RESIZE_LISTENER_) {
-      window.addEventListener('resize', resizeListener);
+      window.addEventListener('resize', resizeListener.bind(null, null));
       window._MEDIA_CSS_RESIZE_LISTENER_ = true;
     }`;
   }
@@ -197,18 +240,19 @@ module.exports = class MediaQuerySplittingPlugin {
 
     compiler.hooks.thisCompilation.tap(pluginName, (compilation) => {
 
-
+      // initial page load
       compilation.mainTemplate.hooks.require.tap(pluginName, (source) => {
         if(source) {
           return this.buildCode() + source;
         }
-        
       })
 
+      // when accessing code split point
       compilation.mainTemplate.hooks.requireEnsure.tap(pluginName, (source) => {
         if (source) {
           const promisesString           = 'promises.push(installedCssChunks[chunkId] = new Promise(function(resolve, reject) {'
-          const newPromisesString        = `promises.push(installedCssChunks[chunkId] = Promise.all([ \'common\', currentMediaType ]
+          const newPromisesString        = `
+          promises.push(installedCssChunks[chunkId] = Promise.all([ \'common\', currentMediaType ]
             .map(function (mediaType) {
               return new Promise(function(resolve, reject) {
                 // Don't load tabletPortrait or tabletLandscape if there is tablet style
@@ -229,7 +273,7 @@ module.exports = class MediaQuerySplittingPlugin {
           `
 
           const promisesBottomRegExp     = /head\.appendChild\(linkTag\);(.|\n)*}\)\.then/
-          const newPromisesBottomString  = 'head.appendChild(linkTag);resize();\n})\n})).then'
+          const newPromisesBottomString  = 'determineMediaType(linkTag, resolve, reject);\n})\n})).then'
 
           const hrefString               = source.replace(/(.|\n)*var href = \"/, '').replace(/\";(.|\n)*/, '')
           const mediaTypeString          = hrefString.replace(/ chunkId /, ' chunkId + (mediaType !== "common" ? "."  + mediaType : "") ')
@@ -242,6 +286,7 @@ module.exports = class MediaQuerySplittingPlugin {
       })
     })
 
+    // build the media-query split CSS files during compilation
     compiler.plugin('emit', (compilation, callback) => {
       const cssChunks = Object.keys(compilation.assets).filter((asset) => /\.css$/.test(asset))
 
