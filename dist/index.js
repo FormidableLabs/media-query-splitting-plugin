@@ -100,7 +100,6 @@ module.exports = class MediaQuerySplittingPlugin {
             chunkIds[chunkId].mediaTypes.push(chunkMediaType);
           }
         } else {
-          // todo: this should never be the case after removing it from SSR
           // base stylesheets
           var chunkId            = chunkHref.replace(/\\..*/, '');
           var chunkHash          = chunkHref.replace(/\\.css$/, '').replace('' + chunkId + '.', '');
@@ -163,7 +162,7 @@ module.exports = class MediaQuerySplittingPlugin {
       var chunkIds           = collectExistingStylesheets();
 
       if (linkTagFromMiniCssPlugin) {
-        // this is what mini-css-extract-plugin is trying to add.  We don't want to add it and instead add the media specific stylesheet
+        // this is what mini-css-extract-plugin is trying to add.  We need information from it to load the media specific stylesheet
         var chunkHref          = linkTagFromMiniCssPlugin.href.replace(/.*\\//, '');
         var chunkId            = chunkHref.replace(/\\..*/, '');
         var chunkHash          = chunkHref.replace(/\\.css$/, '').replace('' + chunkId + '.', '');
@@ -273,7 +272,7 @@ module.exports = class MediaQuerySplittingPlugin {
           `
 
           const promisesBottomRegExp     = /head\.appendChild\(linkTag\);(.|\n)*}\)\.then/
-          const newPromisesBottomString  = 'determineMediaType(linkTag, resolve, reject);\n})\n})).then'
+          const newPromisesBottomString  = 'head.appendChild(linkTag);determineMediaType(linkTag, resolve, reject);\n})\n})).then'
 
           const hrefString               = source.replace(/(.|\n)*var href = \"/, '').replace(/\";(.|\n)*/, '')
           const mediaTypeString          = hrefString.replace(/ chunkId /, ' chunkId + (mediaType !== "common" ? "."  + mediaType : "") ')

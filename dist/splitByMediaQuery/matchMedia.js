@@ -9,7 +9,7 @@ module.exports = ({ mediaQuery: _mediaQuery = '', mediaOptions, remBase }) => {
   const tabletLandscape           = new RegExp(`(min-width: (${mediaOptions.tabletLandscapeStart}px)|(${pxToRems(mediaOptions.tabletLandscapeStart, remBase)}rem)) and (max-width: (${mediaOptions.tabletLandscapeEnd}px)|(${pxToRems(mediaOptions.tabletLandscapeEnd, remBase)}rem))`)
   const tablet                    = new RegExp(`(min-width: (${mediaOptions.tabletPortraitStart}px)|(${pxToRems(mediaOptions.tabletPortraitStart, remBase)}rem)) and (max-width: (${mediaOptions.tabletLandscapeEnd}px)|(${pxToRems(mediaOptions.tabletLandscapeEnd, remBase)}rem))`)
   const tabletPortrait            = new RegExp(`(min-width: (${mediaOptions.tabletPortraitStart}px)|(${pxToRems(mediaOptions.tabletPortraitStart, remBase)}rem)) and (max-width: (${mediaOptions.tabletPortraitEnd}px)|(${pxToRems(mediaOptions.tabletPortraitEnd, remBase)}rem))`)
-  const mobile                    = new RegExp(`(max-width: (${mediaOptions.mobileEnd}px)|${pxToRems(mediaOptions.mobileEnd, remBase)}rem)`)
+  const mobile                    = new RegExp(`(max-width: (${mediaOptions.mobileEnd}px)|(${pxToRems(mediaOptions.mobileEnd, remBase)}rem))`)
   const tabletLandscapeAndHigher  = new RegExp(`(min-width: (${mediaOptions.tabletLandscapeStart}px)|(${pxToRems(mediaOptions.tabletLandscapeStart, remBase)}rem))`)
   const tabletLandscapeAndLower   = new RegExp(`(max-width: (${mediaOptions.tabletLandscapeEnd}px)|(${pxToRems(mediaOptions.tabletLandscapeEnd, remBase)}rem))`)
   const exceptMobile              = new RegExp(`(min-width: (${mediaOptions.tabletPortraitStart}px)|(${pxToRems(mediaOptions.tabletPortraitStart, remBase)}rem))`)
@@ -27,10 +27,10 @@ module.exports = ({ mediaQuery: _mediaQuery = '', mediaOptions, remBase }) => {
   const isTabletLandscape = (
     tablet.test(mediaQuery)
     || tabletLandscape.test(mediaQuery)
-    || tabletPortraitAndHigher.test(mediaQuery)
+   || tabletPortraitAndHigher.test(mediaQuery)
     || tabletLandscapeAndLower.test(mediaQuery)
-    || tabletLandscapeAndHigher.test(mediaQuery)
-    || exceptMobile.test(mediaQuery)
+   || tabletLandscapeAndHigher.test(mediaQuery)
+   || exceptMobile.test(mediaQuery)
     || exceptDesktop.test(mediaQuery)
   )
 
@@ -39,8 +39,8 @@ module.exports = ({ mediaQuery: _mediaQuery = '', mediaOptions, remBase }) => {
     || tabletPortrait.test(mediaQuery)
     || tabletPortraitAndHigher.test(mediaQuery)
     || tabletPortraitAndLower.test(mediaQuery)
-    || tabletLandscapeAndLower.test(mediaQuery)
-    || exceptMobile.test(mediaQuery)
+   || tabletLandscapeAndLower.test(mediaQuery)
+   || exceptMobile.test(mediaQuery)
     || exceptDesktop.test(mediaQuery)
   )
 
