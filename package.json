@@ -2,10 +2,11 @@
   "name": "media-query-splitting-plugin",
   "version": "1.1.13",
   "description": "Webpack 4 plugin for styles splitting by media query",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "transpile": "babel ./dist --out-dir ./src",
-    "minify": "minify ./src/index.js -d ./src && minify ./src/splitByMediaQuery/index.js -d ./src/splitByMediaQuery && minify ./src/splitByMediaQuery/matchMedia.js -d ./src/splitByMediaQuery",
+    "install": "npm run build",
+    "transpile": "babel ./src --out-dir ./dist",
+    "minify": "minify ./dist/index.js -d ./dist && minify ./dist/splitByMediaQuery/index.js -d ./dist/splitByMediaQuery && minify ./dist/splitByMediaQuery/matchMedia.js -d ./dist/splitByMediaQuery",
     "build": "npm run transpile && npm run minify"
   },
   "repository": {
