@@ -4,6 +4,7 @@
   "description": "Webpack 4 plugin for styles splitting by media query",
   "main": "dist/index.js",
   "scripts": {
+    "install": "npm run build",
     "transpile": "babel ./src --out-dir ./dist",
     "minify": "minify ./dist/index.js -d ./dist && minify ./dist/splitByMediaQuery/index.js -d ./dist/splitByMediaQuery && minify ./dist/splitByMediaQuery/matchMedia.js -d ./dist/splitByMediaQuery",
     "build": "npm run transpile && npm run minify"
