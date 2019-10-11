@@ -1,22 +1,24 @@
-const splitByMediaQuery  = require('./splitByMediaQuery')
-
+const splitByMediaQuery = require("./splitByMediaQuery");
 
 module.exports = class MediaQuerySplittingPlugin {
-
   constructor(options) {
-    const { media = {}, splitTablet, remBase = 16 } = options || {}
+    const { media = {}, splitTablet, remBase = 16 } = options || {};
     this.options = {
       media: {
         mobileEnd: media.mobileEnd || 568,
         tabletPortraitStart: media.mobileEnd ? media.mobileEnd + 1 : 569,
         tabletPortraitEnd: media.tabletPortraitEnd || 768,
-        tabletLandscapeStart: media.tabletPortraitEnd ? media.tabletPortraitEnd + 1 : 769,
+        tabletLandscapeStart: media.tabletPortraitEnd
+          ? media.tabletPortraitEnd + 1
+          : 769,
         tabletLandscapeEnd: media.tabletLandscapeEnd || 1024,
-        desktopStart: media.tabletLandscapeEnd ? media.tabletLandscapeEnd + 1 : 1025,
+        desktopStart: media.tabletLandscapeEnd
+          ? media.tabletLandscapeEnd + 1
+          : 1025
       },
       splitTablet: splitTablet !== false,
-      remBase: remBase,
-    }
+      remBase: remBase
+    };
   }
 
   buildCode() {
@@ -42,10 +44,22 @@ module.exports = class MediaQuerySplittingPlugin {
     // Define current mediaType
     var getMediaType = function() {
       return {
-        isMobile: window.matchMedia('(max-width: ${this.options.media.mobileEnd}px)').matches,
-        isTabletPortrait: window.matchMedia('(min-width: ${this.options.media.tabletPortraitStart}px) and (max-width: ${this.options.media.tabletPortraitEnd}px)').matches,
-        isTabletLandscape: window.matchMedia('(min-width: ${this.options.media.tabletLandscapeStart}px) and (max-width: ${this.options.media.tabletLandscapeEnd}px)').matches,
-        isDesktop: window.matchMedia('(min-width: ${this.options.media.desktopStart}px)').matches,
+        isMobile: window.matchMedia('(max-width: ${
+          this.options.media.mobileEnd
+        }px)').matches,
+        isTabletPortrait: window.matchMedia('(min-width: ${
+          this.options.media.tabletPortraitStart
+        }px) and (max-width: ${
+      this.options.media.tabletPortraitEnd
+    }px)').matches,
+        isTabletLandscape: window.matchMedia('(min-width: ${
+          this.options.media.tabletLandscapeStart
+        }px) and (max-width: ${
+      this.options.media.tabletLandscapeEnd
+    }px)').matches,
+        isDesktop: window.matchMedia('(min-width: ${
+          this.options.media.desktopStart
+        }px)').matches,
       }
     };
 
@@ -55,15 +69,16 @@ module.exports = class MediaQuerySplittingPlugin {
     if (mediaType.isMobile) {
       currentMediaType           = 'mobile'
     }
-    ${this.options.splitTablet
-    ? `
+    ${
+      this.options.splitTablet
+        ? `
         else if (mediaType.isTabletPortrait) {
           currentMediaType       = 'tabletPortrait'
         }
         else if (mediaType.isTabletLandscape) {
           currentMediaType       = 'tabletLandscape'
         }`
-    : `
+        : `
         else if (mediaType.isTabletPortrait || mediaType.isTabletLandscape) {
           currentMediaType       = 'tablet'
         }
@@ -195,62 +210,65 @@ module.exports = class MediaQuerySplittingPlugin {
       }
     };
 
-    var determineMediaType = function(linkTag, resolve, reject) {
+    var setCurrentMediaType = function() {
       var newMediaType
-      var mediaType              = getMediaType();
+      var mediaType = getMediaType();
 
       if (mediaType.isMobile) {
-        newMediaType             = 'mobile'
+        newMediaType = 'mobile'
       }
-      ${this.options.splitTablet
-    ? `
-          else if (mediaType.isTabletPortrait) {
-            newMediaType         = 'tabletPortrait'
-          }
-          else if (mediaType.isTabletLandscape) {
-            newMediaType         = 'tabletLandscape'
-          }`
-    : `else if (mediaType.isTabletPortrait || mediaType.isTabletLandscape) {
-            newMediaType         = 'tablet'
-          }`
-    }
+      ${
+        this.options.splitTablet
+          ? `
+      else if (mediaType.isTabletPortrait) {
+        newMediaType         = 'tabletPortrait'
+      }
+      else if (mediaType.isTabletLandscape) {
+        newMediaType         = 'tabletLandscape'
+      }`
+          : `
+      else if (mediaType.isTabletPortrait || mediaType.isTabletLandscape) {
+            newMediaType = 'tablet'
+      }`
+      }
       else {
-        newMediaType             = 'desktop'
+        newMediaType = 'desktop'
       }
 
       if (currentMediaType !== newMediaType) {
-        currentMediaType         = newMediaType;
+        currentMediaType = newMediaType;
       }
-      
-      tryAppendNewMedia(linkTag, resolve, reject)
     };
 
-    var resizeListener = debounce(determineMediaType, 250);
+    var resizeListener = debounce(() => {
+      setCurrentMediaType();
+      tryAppendNewMedia();
+    }, 250);
 
     if(!window._MEDIA_CSS_RESIZE_LISTENER_) {
-      window.addEventListener('resize', resizeListener.bind(null, null));
+      window.addEventListener('resize', resizeListener);
       window._MEDIA_CSS_RESIZE_LISTENER_ = true;
     }`;
   }
 
   apply(compiler) {
-    const { media: mediaOptions, splitTablet, remBase } = this.options
-    const pluginName = 'media-query-splitting-plugin'
+    const { media: mediaOptions, splitTablet, remBase } = this.options;
+    const pluginName = "media-query-splitting-plugin";
 
-    compiler.hooks.thisCompilation.tap(pluginName, (compilation) => {
-
+    compiler.hooks.thisCompilation.tap(pluginName, compilation => {
       // initial page load
-      compilation.mainTemplate.hooks.require.tap(pluginName, (source) => {
-        if(source) {
+      compilation.mainTemplate.hooks.require.tap(pluginName, source => {
+        if (source) {
           return this.buildCode() + source;
         }
-      })
+      });
 
       // when accessing code split point
-      compilation.mainTemplate.hooks.requireEnsure.tap(pluginName, (source) => {
+      compilation.mainTemplate.hooks.requireEnsure.tap(pluginName, source => {
         if (source) {
-          const promisesString           = 'promises.push(installedCssChunks[chunkId] = new Promise(function(resolve, reject) {'
-          const newPromisesString        = `
+          const promisesString =
+            "promises.push(installedCssChunks[chunkId] = new Promise(function(resolve, reject) {";
+          const newPromisesString = `
           promises.push(installedCssChunks[chunkId] = Promise.all([ \'common\', currentMediaType ]
             .map(function (mediaType) {
               return new Promise(function(resolve, reject) {
@@ -269,52 +287,71 @@ module.exports = class MediaQuerySplittingPlugin {
                     }
                   }
                 }
-          `
+          `;
 
-          const promisesBottomRegExp     = /head\.appendChild\(linkTag\);(.|\n)*}\)\.then/
-          const newPromisesBottomString  = 'head.appendChild(linkTag);determineMediaType(linkTag, resolve, reject);\n})\n})).then'
+          const promisesBottomRegExp = /head\.appendChild\(linkTag\);(.|\n)*}\)\.then/;
+          const newPromisesBottomString =
+            "head.appendChild(linkTag);\nsetCurrentMediaType();\ntryAppendNewMedia(linkTag, resolve, reject);\n})\n})).then";
 
-          const hrefString               = source.replace(/(.|\n)*var href = \"/, '').replace(/\";(.|\n)*/, '')
-          const mediaTypeString          = hrefString.replace(/ chunkId /, ' chunkId + (mediaType !== "common" ? "."  + mediaType : "") ')
+          const hrefString = source
+            .replace(/(.|\n)*var href = \"/, "")
+            .replace(/\";(.|\n)*/, "");
+          const mediaTypeString = hrefString.replace(
+            / chunkId /,
+            ' chunkId + (mediaType !== "common" ? "."  + mediaType : "") '
+          );
 
           return source
             .replace(promisesString, `${this.buildCode()}${newPromisesString}`)
             .replace(hrefString, mediaTypeString)
-            .replace(promisesBottomRegExp, newPromisesBottomString)
+            .replace(promisesBottomRegExp, newPromisesBottomString);
         }
-      })
-    })
+      });
+    });
 
-    // build the media-query split CSS files during compilation
-    compiler.plugin('emit', (compilation, callback) => {
-      const cssChunks = Object.keys(compilation.assets).filter((asset) => /\.css$/.test(asset))
+    /**
+     * build the media-query split CSS files during compilation
+     */
+    compiler.plugin("emit", (compilation, callback) => {
+      const cssChunks = Object.keys(compilation.assets).filter(asset =>
+        /\.css$/.test(asset)
+      );
 
       // Split each css chunk
-      cssChunks.forEach((chunkName) => {
-        const asset                      = compilation.assets[chunkName]
-        const child                      = asset.children && asset.children[0]
-        const cssSource                  = typeof asset.source === 'function' ? asset.source() : (child || asset)._value
-        const chunkHash                  = chunkName.replace(/\.css$/, '').replace(/.*\./, '')
-        const chunkId                    = chunkName.replace(/\..*/, '')
-        const splitValue                 = splitByMediaQuery({ cssSource, mediaOptions, remBase })
+      cssChunks.forEach(chunkName => {
+        const asset = compilation.assets[chunkName];
+        const child = asset.children && asset.children[0];
+        const cssSource =
+          typeof asset.source === "function"
+            ? asset.source()
+            : (child || asset)._value;
+        const chunkHash = chunkName.replace(/\.css$/, "").replace(/.*\./, "");
+        const chunkId = chunkName.replace(/\..*/, "");
+        const splitValue = splitByMediaQuery({
+          cssSource,
+          mediaOptions,
+          remBase
+        });
 
-        Object.keys(splitValue).forEach((mediaType) => {
-          const splitMediaChunk          = splitValue[mediaType]
+        Object.keys(splitValue).forEach(mediaType => {
+          const splitMediaChunk = splitValue[mediaType];
 
           if (splitTablet || !/tablet(Portrait|Landscape)/.test(mediaType)) {
-            const isCommon               = mediaType === 'common'
-            const splitMediaChunkFilename = isCommon ? chunkName : `${chunkId}.${mediaType}.${chunkHash}.css`
+            const isCommon = mediaType === "common";
+            const splitMediaChunkFilename = isCommon
+              ? chunkName
+              : `${chunkId}.${mediaType}.${chunkHash}.css`;
 
             // Add chunk to assets
             compilation.assets[splitMediaChunkFilename] = {
-              size: () => Buffer.byteLength(splitMediaChunk, 'utf8'),
+              size: () => Buffer.byteLength(splitMediaChunk, "utf8"),
               source: () => new Buffer(splitMediaChunk)
-            }
+            };
           }
-        })
-      })
+        });
+      });
 
-      callback()
-    })
+      callback();
+    });
   }
-}
+};
