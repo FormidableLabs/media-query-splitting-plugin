@@ -1,1 +1,120 @@
-"use strict";var css=require("css"),CleanCSS=require("clean-css"),matchMedia=require("./matchMedia");function shouldBeExcluded(a,b){if(!a.rules)return!1;var c=a.rules.map(function(a){var b=a.selectors;return b.join(",")});return b.some(function(a){return c.includes(a)})}module.exports=function(a){var b=a.cssSource,c=a.mediaOptions,d=a.ignoredSelectors,e=a.units,f={},g={},h=css.parse(b).stylesheet.rules,i={common:[],desktop:[],mobile:[],tabletPortrait:[],tabletLandscape:[],tablet:[]},j=0<d.length;return h.forEach(function(a){var b=matchMedia({mediaQuery:a.media,mediaOptions:c,units:e}),f=b.isDesktop,g=b.isTablet,h=b.isTabletLandscape,k=b.isTabletPortrait,l=b.isMobile;"media"===a.type?j&&shouldBeExcluded(a,d)?i.common.push(a):(f&&i.desktop.push(a),h&&(i.tablet.push(a),i.tabletLandscape.push(a)),k&&(i.tablet.push(a),i.tabletPortrait.push(a)),l&&i.mobile.push(a),!f&&!g&&!l&&i.common.push(a)):i.common.push(a)}),Object.keys(i).forEach(function(a){f[a]=[],g[a]=[];var b=i[a];b.forEach(function(b){var c=b.media,d=b.rules,e=b.position,g=f[a],h=g.length?g[g.length-1].media:null,i=f[a].map(function(a){var b=a.media;return b}).indexOf(c);c&&h===c?f[a][i].rules=f[a][i].rules.concat(d):f[a].push(b)});var c=css.stringify({type:"stylesheet",stylesheet:{rules:f[a]}});g[a]=new CleanCSS().minify(c).styles}),g};
+// @ts-check
+
+/**
+ * @typedef {import('../index.js').MediaOptions} MediaOptions
+ * @typedef {import('../index.js').Units} Units
+ */
+
+const css = require("css");
+const CleanCSS = require("clean-css");
+const matchMedia = require("./matchMedia");
+
+
+/**
+ * @param {Object} rule
+ * @param {string[]} excludedSelectors
+ * @return {boolean}
+ */
+function shouldBeExcluded(rule, excludedSelectors) {
+  if (!rule.rules) return false;
+  const allSelectors = rule.rules.map(({ selectors }) => selectors.join(","));
+  return excludedSelectors.some(excludedSelector => allSelectors.includes(excludedSelector))
+}
+
+/**
+ * @param {Object} options
+ * @param {string} options.cssSource
+ * @param {MediaOptions} options.mediaOptions
+ * @param {number} options.remBase
+ * @param {string[]} options.ignoredSelectors
+ * @param {Units} options.units
+ */
+module.exports = ({ cssSource, mediaOptions, ignoredSelectors, units }) => {
+  const output = {};
+  const textOutput = {};
+
+  const inputRules = css.parse(cssSource).stylesheet.rules;
+  const outputRules = {
+    common: [],
+    desktop: [],
+    mobile: [],
+    tabletPortrait: [],
+    tabletLandscape: [],
+    tablet: []
+  };
+  const hasIgnoredSelectors = ignoredSelectors.length > 0;
+
+  inputRules.forEach((rule) => {
+    const {
+      isDesktop,
+      isTablet,
+      isTabletLandscape,
+      isTabletPortrait,
+      isMobile
+    } = matchMedia({ mediaQuery: rule.media, mediaOptions, units });
+
+    const isNoMatch = !isDesktop && !isTablet && !isMobile;
+
+    if (rule.type === "media") {
+      if (hasIgnoredSelectors && shouldBeExcluded(rule, ignoredSelectors)) {
+        outputRules.common.push(rule);
+      } else {
+        if (isDesktop) {
+          outputRules.desktop.push(rule);
+        }
+        if (isTabletLandscape) {
+          outputRules.tablet.push(rule);
+          outputRules.tabletLandscape.push(rule);
+        }
+        if (isTabletPortrait) {
+          outputRules.tablet.push(rule);
+          outputRules.tabletPortrait.push(rule);
+        }
+        if (isMobile) {
+          outputRules.mobile.push(rule);
+        }
+        if (isNoMatch) {
+          outputRules.common.push(rule);
+        }
+      }
+    } else {
+      outputRules.common.push(rule);
+    }
+  });
+
+  Object.keys(outputRules).forEach(mediaType => {
+    output[mediaType] = [];
+    textOutput[mediaType] = [];
+    const rules = outputRules[mediaType];
+
+    // Merge consecutive duplicate media conditions
+    rules.forEach((rule, index) => {
+      const { media, rules, position } = rule;
+
+      const mediaRules = output[mediaType];
+      const lastMedia = mediaRules.length ? mediaRules[mediaRules.length - 1].media : null;
+      const mediaIndex = output[mediaType]
+        .map(({ media }) => media)
+        .indexOf(media);
+
+      if (media && lastMedia === media) {
+        output[mediaType][mediaIndex].rules = output[mediaType][
+          mediaIndex
+        ].rules.concat(rules);
+      } else {
+        output[mediaType].push(rule);
+      }
+    });
+
+    // Stringify styles
+    const style = css.stringify({
+      type: "stylesheet",
+      stylesheet: { rules: output[mediaType] }
+    });
+
+    // Minify styles
+    textOutput[mediaType] = new CleanCSS().minify(style).styles;
+  });
+
+  return textOutput;
+};

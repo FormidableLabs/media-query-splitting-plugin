@@ -1,1 +1,123 @@
-"use strict";module.exports=function(a){var b=a.mediaQuery,c=void 0===b?"":b,d=a.mediaOptions,e=a.units,f=d.desktopStart,g=d.tabletLandscapeStart,h=d.tabletLandscapeEnd,i=d.tabletPortraitStart,j=d.tabletPortraitEnd,k=d.mobileEnd,l=c.replace(/:/g,": ").replace(/,/g,", ").replace(/  /g," "),m=buildRegex({minWidth:f,units:e}),n=buildRegex({minWidth:g,maxWidth:h,units:e}),o=buildRegex({minWidth:i,maxWidth:h,units:e}),p=buildRegex({minWidth:i,maxWidth:j,units:e}),q=buildRegex({maxWidth:k,units:e}),r=buildRegex({minWidth:g,units:e}),s=buildRegex({maxWidth:h,units:e}),t=buildRegex({maxWidth:h,units:e}),u=buildRegex({minWidth:i,units:e}),v=buildRegex({maxWidth:j,units:e}),w=m.test(l)||r.test(l)||u.test(l),x=o.test(l)||n.test(l)||u.test(l)||s.test(l)||r.test(l)||t.test(l),y=o.test(l)||p.test(l)||u.test(l)||v.test(l)||s.test(l)||t.test(l),z=q.test(l)||v.test(l)||s.test(l)||t.test(l);return{isDesktop:w,isTablet:y||x,isTabletLandscape:x,isTabletPortrait:y,isMobile:z}};function buildRegex(a){var b=a.minWidth,c=a.maxWidth,d=a.units,e=[];return b&&e.push("(min-width: (".concat(b).concat(d,"))")),c&&e.push("(max-width: (".concat(c).concat(d,"))")),new RegExp(e.join(" and "))}
+// @ts-check
+
+/**
+ * @typedef {import('../index.js').MediaOptions} MediaOptions
+ * @typedef {import('../index.js').Units} Units
+ */
+
+/**
+ * @param {Object} options
+ * @param {string} [options.mediaQuery]
+ * @param {MediaOptions} options.mediaOptions
+ * @param {Units} options.units
+ */
+module.exports = ({ mediaQuery = "", mediaOptions, units }) => {
+  const {
+    desktopStart,
+    tabletLandscapeStart,
+    tabletLandscapeEnd,
+    tabletPortraitStart,
+    tabletPortraitEnd,
+    mobileEnd
+  } = mediaOptions;
+  const normalizedMediaQuery = mediaQuery
+    .replace(/:/g, ": ")
+    .replace(/,/g, ", ")
+    .replace(/  /g, " ");
+
+  const desktop = buildRegex({ minWidth: desktopStart, units });
+  const tabletLandscape = buildRegex({
+    minWidth: tabletLandscapeStart,
+    maxWidth: tabletLandscapeEnd,
+    units,
+  });
+  const tablet = buildRegex({
+    minWidth: tabletPortraitStart,
+    maxWidth: tabletLandscapeEnd,
+    units,
+  });
+  const tabletPortrait = buildRegex({
+    minWidth: tabletPortraitStart,
+    maxWidth: tabletPortraitEnd,
+    units,
+  });
+  const mobile = buildRegex({ maxWidth: mobileEnd, units });
+  const tabletLandscapeAndHigher = buildRegex({
+    minWidth: tabletLandscapeStart,
+    units,
+  });
+  const tabletLandscapeAndLower = buildRegex({
+    maxWidth: tabletLandscapeEnd,
+    units,
+  });
+  const exceptDesktop = buildRegex({
+    maxWidth: tabletLandscapeEnd,
+    units,
+  });
+  const tabletPortraitAndHigher = buildRegex({
+    minWidth: tabletPortraitStart,
+    units,
+  });
+  const tabletPortraitAndLower = buildRegex({
+    maxWidth: tabletPortraitEnd,
+    units,
+  });
+
+  const isDesktop =
+    desktop.test(normalizedMediaQuery) ||
+    tabletLandscapeAndHigher.test(normalizedMediaQuery) ||
+    tabletPortraitAndHigher.test(normalizedMediaQuery);
+
+  const isTabletLandscape =
+    tablet.test(normalizedMediaQuery) ||
+    tabletLandscape.test(normalizedMediaQuery) ||
+    tabletPortraitAndHigher.test(normalizedMediaQuery) ||
+    tabletLandscapeAndLower.test(normalizedMediaQuery) ||
+    tabletLandscapeAndHigher.test(normalizedMediaQuery) ||
+    exceptDesktop.test(normalizedMediaQuery);
+
+  const isTabletPortrait =
+    tablet.test(normalizedMediaQuery) ||
+    tabletPortrait.test(normalizedMediaQuery) ||
+    tabletPortraitAndHigher.test(normalizedMediaQuery) ||
+    tabletPortraitAndLower.test(normalizedMediaQuery) ||
+    tabletLandscapeAndLower.test(normalizedMediaQuery) ||
+    exceptDesktop.test(normalizedMediaQuery);
+
+  const isTablet = isTabletPortrait || isTabletLandscape;
+
+  const isMobile =
+    mobile.test(normalizedMediaQuery) ||
+    tabletPortraitAndLower.test(normalizedMediaQuery) ||
+    tabletLandscapeAndLower.test(normalizedMediaQuery) ||
+    exceptDesktop.test(normalizedMediaQuery);
+
+  return {
+    isDesktop,
+    isTablet,
+    isTabletLandscape,
+    isTabletPortrait,
+    isMobile
+  };
+};
+
+/**
+ * @param {Object} options 
+ * @param {number} [options.minWidth]
+ * @param {number} [options.maxWidth]
+ * @param {Units} options.units
+ */
+function buildRegex({ minWidth, maxWidth, units }) {
+  const pieces = [];
+  if (minWidth) {
+    pieces.push(
+      `(min-width: (${minWidth}${units}))`
+    );
+  }
+  if (maxWidth) {
+    pieces.push(
+      `(max-width: (${maxWidth}${units}))`
+    );
+  }
+  return new RegExp(pieces.join(" and "));
+}
