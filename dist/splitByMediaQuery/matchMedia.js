@@ -1,28 +1,72 @@
-function pxToRems(pixels, base) {
-  return pixels / base;
-}
+// @ts-check
 
-module.exports = ({ mediaQuery: _mediaQuery = '', mediaOptions, remBase }) => {
-  const normalizedMediaQuery = _mediaQuery.replace(/:/g, ': ').replace(/,/g, ', ').replace(/  /g, ' ')
+/**
+ * @typedef {import('../index.js').MediaOptions} MediaOptions
+ * @typedef {import('../index.js').Units} Units
+ */
 
-  // todo: clean this up
-  const desktop                   = new RegExp(`(min-width: (${mediaOptions.desktopStart}px)|(${pxToRems(mediaOptions.desktopStart, remBase)}rem))`)
-  const tabletLandscape           = new RegExp(`(min-width: (${mediaOptions.tabletLandscapeStart}px)|(${pxToRems(mediaOptions.tabletLandscapeStart, remBase)}rem)) and (max-width: (${mediaOptions.tabletLandscapeEnd}px)|(${pxToRems(mediaOptions.tabletLandscapeEnd, remBase)}rem))`)
-  const tablet                    = new RegExp(`(min-width: (${mediaOptions.tabletPortraitStart}px)|(${pxToRems(mediaOptions.tabletPortraitStart, remBase)}rem)) and (max-width: (${mediaOptions.tabletLandscapeEnd}px)|(${pxToRems(mediaOptions.tabletLandscapeEnd, remBase)}rem))`)
-  const tabletPortrait            = new RegExp(`(min-width: (${mediaOptions.tabletPortraitStart}px)|(${pxToRems(mediaOptions.tabletPortraitStart, remBase)}rem)) and (max-width: (${mediaOptions.tabletPortraitEnd}px)|(${pxToRems(mediaOptions.tabletPortraitEnd, remBase)}rem))`)
-  const mobile                    = new RegExp(`(max-width: (${mediaOptions.mobileEnd}px)|(${pxToRems(mediaOptions.mobileEnd, remBase)}rem))`)
-  const tabletLandscapeAndHigher  = new RegExp(`(min-width: (${mediaOptions.tabletLandscapeStart}px)|(${pxToRems(mediaOptions.tabletLandscapeStart, remBase)}rem))`)
-  const tabletLandscapeAndLower   = new RegExp(`(max-width: (${mediaOptions.tabletLandscapeEnd}px)|(${pxToRems(mediaOptions.tabletLandscapeEnd, remBase)}rem))`)
-  const exceptMobile              = new RegExp(`(min-width: (${mediaOptions.tabletPortraitStart}px)|(${pxToRems(mediaOptions.tabletPortraitStart, remBase)}rem))`)
-  const exceptDesktop             = new RegExp(`(max-width: (${mediaOptions.tabletLandscapeEnd}px)|(${pxToRems(mediaOptions.tabletLandscapeEnd, remBase)}rem))`)
-  const tabletPortraitAndHigher   = new RegExp(`(min-width: (${mediaOptions.tabletPortraitStart}px)|(${pxToRems(mediaOptions.tabletPortraitStart, remBase)}rem))`)
-  const tabletPortraitAndLower    = new RegExp(`(max-width: (${mediaOptions.tabletPortraitEnd}px)|(${pxToRems(mediaOptions.tabletPortraitEnd, remBase)}rem))`)
+/**
+ * @param {Object} options
+ * @param {string} [options.mediaQuery]
+ * @param {MediaOptions} options.mediaOptions
+ * @param {Units} options.units
+ */
+module.exports = ({ mediaQuery = "", mediaOptions, units }) => {
+  const {
+    desktopStart,
+    tabletLandscapeStart,
+    tabletLandscapeEnd,
+    tabletPortraitStart,
+    tabletPortraitEnd,
+    mobileEnd
+  } = mediaOptions;
+  const normalizedMediaQuery = mediaQuery
+    .replace(/:/g, ": ")
+    .replace(/,/g, ", ")
+    .replace(/  /g, " ");
+
+  const desktop = buildRegex({ minWidth: desktopStart, units });
+  const tabletLandscape = buildRegex({
+    minWidth: tabletLandscapeStart,
+    maxWidth: tabletLandscapeEnd,
+    units,
+  });
+  const tablet = buildRegex({
+    minWidth: tabletPortraitStart,
+    maxWidth: tabletLandscapeEnd,
+    units,
+  });
+  const tabletPortrait = buildRegex({
+    minWidth: tabletPortraitStart,
+    maxWidth: tabletPortraitEnd,
+    units,
+  });
+  const mobile = buildRegex({ maxWidth: mobileEnd, units });
+  const tabletLandscapeAndHigher = buildRegex({
+    minWidth: tabletLandscapeStart,
+    units,
+  });
+  const tabletLandscapeAndLower = buildRegex({
+    maxWidth: tabletLandscapeEnd,
+    units,
+  });
+  const exceptDesktop = buildRegex({
+    maxWidth: tabletLandscapeEnd,
+    units,
+  });
+  const tabletPortraitAndHigher = buildRegex({
+    minWidth: tabletPortraitStart,
+    units,
+  });
+  const tabletPortraitAndLower = buildRegex({
+    maxWidth: tabletPortraitEnd,
+    units,
+  });
 
   const isDesktop =
     desktop.test(normalizedMediaQuery) ||
     tabletLandscapeAndHigher.test(normalizedMediaQuery) ||
-    tabletPortraitAndHigher.test(normalizedMediaQuery) ||
-    exceptMobile.test(normalizedMediaQuery);
+    tabletPortraitAndHigher.test(normalizedMediaQuery);
 
   const isTabletLandscape =
     tablet.test(normalizedMediaQuery) ||
@@ -30,7 +74,6 @@ module.exports = ({ mediaQuery: _mediaQuery = '', mediaOptions, remBase }) => {
     tabletPortraitAndHigher.test(normalizedMediaQuery) ||
     tabletLandscapeAndLower.test(normalizedMediaQuery) ||
     tabletLandscapeAndHigher.test(normalizedMediaQuery) ||
-    exceptMobile.test(normalizedMediaQuery) ||
     exceptDesktop.test(normalizedMediaQuery);
 
   const isTabletPortrait =
@@ -39,23 +82,42 @@ module.exports = ({ mediaQuery: _mediaQuery = '', mediaOptions, remBase }) => {
     tabletPortraitAndHigher.test(normalizedMediaQuery) ||
     tabletPortraitAndLower.test(normalizedMediaQuery) ||
     tabletLandscapeAndLower.test(normalizedMediaQuery) ||
-    exceptMobile.test(normalizedMediaQuery) ||
     exceptDesktop.test(normalizedMediaQuery);
 
-  const isTablet = isTabletPortrait || isTabletLandscape
+  const isTablet = isTabletPortrait || isTabletLandscape;
 
-  const isMobile = (
-    mobile.test(normalizedMediaQuery)
-    || tabletPortraitAndLower.test(normalizedMediaQuery)
-    || tabletLandscapeAndLower.test(normalizedMediaQuery)
-    || exceptDesktop.test(normalizedMediaQuery)
-  )
+  const isMobile =
+    mobile.test(normalizedMediaQuery) ||
+    tabletPortraitAndLower.test(normalizedMediaQuery) ||
+    tabletLandscapeAndLower.test(normalizedMediaQuery) ||
+    exceptDesktop.test(normalizedMediaQuery);
 
   return {
     isDesktop,
     isTablet,
     isTabletLandscape,
     isTabletPortrait,
-    isMobile,
+    isMobile
+  };
+};
+
+/**
+ * @param {Object} options 
+ * @param {number} [options.minWidth]
+ * @param {number} [options.maxWidth]
+ * @param {Units} options.units
+ */
+function buildRegex({ minWidth, maxWidth, units }) {
+  const pieces = [];
+  if (minWidth) {
+    pieces.push(
+      `(min-width: (${minWidth}${units}))`
+    );
   }
+  if (maxWidth) {
+    pieces.push(
+      `(max-width: (${maxWidth}${units}))`
+    );
+  }
+  return new RegExp(pieces.join(" and "));
 }

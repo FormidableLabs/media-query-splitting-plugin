@@ -1,37 +1,125 @@
+// @ts-check
+
+/**
+ * @typedef {Object} MediaOptions
+ * @property {number} desktopStart
+ * @property {number} tabletLandscapeStart
+ * @property {number} tabletLandscapeEnd
+ * @property {number} tabletPortraitStart
+ * @property {number} tabletPortraitEnd
+ * @property {number} mobileEnd
+ */
+
+ /** @typedef {'px'|'rem'} Units */
+
+  /**
+  * @typedef {Object} PluginMediaConfig
+  * @property {number} [mobileEnd]
+  * @property {number} [tabletPortraitStart]
+  * @property {number} [tabletPortraitEnd]
+  * @property {number} [tabletLandscapeStart]
+  * @property {number} [tabletLandscapeEnd]
+ */
+
+ /**
+  * @typedef {Object} PluginConfig 
+  * @property {PluginMediaConfig} [media]
+  * @property {Units} [units]
+  * @property {number} [remBase]
+  * @property {string[]} [ignoredSelectors]
+  * @property {Units} [units]
+  * @property {boolean} [splitTablet]
+ */
+
 const splitByMediaQuery = require("./splitByMediaQuery");
 
-// todo
 const defaults = {
-  mobileEnd: {px: 568},
-  tabletPortraitStart: {px: 569},
-  tabletPortraitEnd: {px: 768},
-  tabletLandscapeStart: {px: 769},
-  tabletLandscapeEnd: {px: 1024},
-  desktopStart: {px: 1025},
+  mobileEnd: 568,
+  tabletPortraitStart: 569,
+  tabletPortraitEnd: 768,
+  tabletLandscapeStart: 769,
+  tabletLandscapeEnd: 1024,
+  desktopStart: 1025,
 };
 
+
 module.exports = class MediaQuerySplittingPlugin {
+  /**
+   * @param {PluginConfig} options 
+   */
   constructor(options) {
-    const { media = {}, splitTablet = false, remBase = 16, ignoredSelectors = [] } = options || {};
+    const { media = {}, splitTablet = false, remBase = 16, ignoredSelectors = [], units = 'px' } = options || {};
     this.options = {
-      media: {
-        mobileEnd: media.mobileEnd || 568,
-        tabletPortraitStart: media.mobileEnd ? media.mobileEnd + 1 : 569,
-        tabletPortraitEnd: media.tabletPortraitEnd || 768,
-        tabletLandscapeStart: media.tabletPortraitEnd
-          ? media.tabletPortraitEnd + 1
-          : 769,
-        tabletLandscapeEnd: media.tabletLandscapeEnd || 1024,
-        desktopStart: media.tabletLandscapeEnd
-          ? media.tabletLandscapeEnd + 1
-          : 1025
-      },
+      media: this.buildMediaOptions(media, remBase, units),
       splitTablet,
       remBase,
       ignoredSelectors,
+      units,
     };
   }
 
+  /**
+   * 
+   * @param {PluginMediaConfig} media 
+   * @param {number} remBase 
+   * @param {Units} units 
+   * @return {MediaOptions}
+   */
+  buildMediaOptions(media, remBase, units) {
+    return {
+      mobileEnd:
+        media.mobileEnd ||
+        this.calcDefaultMediaOption(defaults.mobileEnd, units, remBase),
+      tabletPortraitStart: media.mobileEnd
+        ? this.modifyValue(media.mobileEnd, 1, units, remBase)
+        : this.calcDefaultMediaOption(defaults.mobileEnd + 1, units, remBase),
+      tabletPortraitEnd:
+        media.tabletPortraitEnd ||
+        this.calcDefaultMediaOption(defaults.tabletPortraitEnd, units, remBase),
+      tabletLandscapeStart: media.tabletPortraitEnd
+        ? this.modifyValue(media.tabletPortraitEnd, 1, units, remBase)
+        : this.calcDefaultMediaOption(
+            defaults.tabletLandscapeStart,
+            units,
+            remBase
+          ),
+      tabletLandscapeEnd: media.tabletLandscapeEnd || this.calcDefaultMediaOption(defaults.tabletLandscapeEnd, units, remBase),
+      desktopStart: media.tabletLandscapeEnd
+          ? this.modifyValue(media.tabletLandscapeEnd, 1, units, remBase)
+          : this.calcDefaultMediaOption(defaults.desktopStart, units, remBase),
+    };
+  }
+
+  /**
+   * @param {number} defaultPx 
+   * @param {Units} units 
+   * @param {number} remBase 
+   * @returns {number}
+   */
+  calcDefaultMediaOption(defaultPx, units, remBase) {
+    return units === 'px' ? defaultPx : (defaultPx / remBase);
+  }
+
+  /**
+   * @param {number} value 
+   * @param {number} adjustment 
+   * @param {Units} units 
+   * @param {number} remBase 
+   * @return {number}
+   */
+  modifyValue(value, adjustment, units, remBase) {
+    if (units === "px") {
+      return value + adjustment;
+    } else if (units === "rem") {
+      return (value * remBase + adjustment) / remBase;
+    }
+
+    throw new Error("Unknown absolute unit " + units);
+  }
+
+  /**
+   * @returns {string}
+   */
   buildCode() {
     return `
     function debounce(func, wait, immediate) {
@@ -263,7 +351,7 @@ module.exports = class MediaQuerySplittingPlugin {
   }
 
   apply(compiler) {
-    const { media: mediaOptions, splitTablet, remBase, ignoredSelectors } = this.options;
+    const { media: mediaOptions, splitTablet, ignoredSelectors, units, remBase } = this.options;
     const pluginName = "media-query-splitting-plugin";
 
     compiler.hooks.thisCompilation.tap(pluginName, compilation => {
@@ -341,8 +429,9 @@ module.exports = class MediaQuerySplittingPlugin {
         const splitValue = splitByMediaQuery({
           cssSource,
           mediaOptions,
+          ignoredSelectors,
+          units,
           remBase,
-          ignoredSelectors
         });
 
         Object.keys(splitValue).forEach(mediaType => {

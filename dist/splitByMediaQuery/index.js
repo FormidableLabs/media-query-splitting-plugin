@@ -1,7 +1,14 @@
+// @ts-check
+
+/**
+ * @typedef {import('../index.js').MediaOptions} MediaOptions
+ * @typedef {import('../index.js').Units} Units
+ */
+
 const css = require("css");
 const CleanCSS = require("clean-css");
 const matchMedia = require("./matchMedia");
-const util = require("util");
+
 
 /**
  * @param {Object} rule
@@ -14,9 +21,18 @@ function shouldBeExcluded(rule, excludedSelectors) {
   return excludedSelectors.some(excludedSelector => allSelectors.includes(excludedSelector))
 }
 
-module.exports = ({ cssSource, mediaOptions, remBase, ignoredSelectors }) => {
+/**
+ * @param {Object} options
+ * @param {string} options.cssSource
+ * @param {MediaOptions} options.mediaOptions
+ * @param {number} options.remBase
+ * @param {string[]} options.ignoredSelectors
+ * @param {Units} options.units
+ */
+module.exports = ({ cssSource, mediaOptions, ignoredSelectors, units }) => {
   const output = {};
   const textOutput = {};
+
   const inputRules = css.parse(cssSource).stylesheet.rules;
   const outputRules = {
     common: [],
@@ -28,19 +44,18 @@ module.exports = ({ cssSource, mediaOptions, remBase, ignoredSelectors }) => {
   };
   const hasIgnoredSelectors = ignoredSelectors.length > 0;
 
-  inputRules.forEach(({ type, media }, index) => {
+  inputRules.forEach((rule) => {
     const {
       isDesktop,
       isTablet,
       isTabletLandscape,
       isTabletPortrait,
       isMobile
-    } = matchMedia({ mediaQuery: media, mediaOptions, remBase });
+    } = matchMedia({ mediaQuery: rule.media, mediaOptions, units });
 
-    const rule = inputRules[index];
     const isNoMatch = !isDesktop && !isTablet && !isMobile;
 
-    if (type === "media") {
+    if (rule.type === "media") {
       if (hasIgnoredSelectors && shouldBeExcluded(rule, ignoredSelectors)) {
         outputRules.common.push(rule);
       } else {
@@ -76,8 +91,8 @@ module.exports = ({ cssSource, mediaOptions, remBase, ignoredSelectors }) => {
     rules.forEach((rule, index) => {
       const { media, rules, position } = rule;
 
-      const foo = output[mediaType];
-      const lastMedia = foo.length ? foo[foo.length - 1].media : null;
+      const mediaRules = output[mediaType];
+      const lastMedia = mediaRules.length ? mediaRules[mediaRules.length - 1].media : null;
       const mediaIndex = output[mediaType]
         .map(({ media }) => media)
         .indexOf(media);
@@ -92,7 +107,6 @@ module.exports = ({ cssSource, mediaOptions, remBase, ignoredSelectors }) => {
     });
 
     // Stringify styles
-    // todo: source map?
     const style = css.stringify({
       type: "stylesheet",
       stylesheet: { rules: output[mediaType] }
