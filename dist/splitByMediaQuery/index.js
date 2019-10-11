@@ -5,16 +5,16 @@ const util = require("util");
 
 /**
  * @param {Object} rule
- * @param {string} excludedSelector
+ * @param {string[]} excludedSelectors
  * @return {boolean}
  */
-function shouldBeExcluded(rule, excludedSelector) {
+function shouldBeExcluded(rule, excludedSelectors) {
   if (!rule.rules) return false;
   const allSelectors = rule.rules.map(({ selectors }) => selectors.join(","));
-  return allSelectors.includes(excludedSelector);
+  return excludedSelectors.some(excludedSelector => allSelectors.includes(excludedSelector))
 }
 
-module.exports = ({ cssSource, mediaOptions, remBase }) => {
+module.exports = ({ cssSource, mediaOptions, remBase, ignoredSelectors }) => {
   const output = {};
   const textOutput = {};
   const inputRules = css.parse(cssSource).stylesheet.rules;
@@ -26,6 +26,7 @@ module.exports = ({ cssSource, mediaOptions, remBase }) => {
     tabletLandscape: [],
     tablet: []
   };
+  const hasIgnoredSelectors = ignoredSelectors.length > 0;
 
   inputRules.forEach(({ type, media }, index) => {
     const {
@@ -40,8 +41,7 @@ module.exports = ({ cssSource, mediaOptions, remBase }) => {
     const isNoMatch = !isDesktop && !isTablet && !isMobile;
 
     if (type === "media") {
-      if (shouldBeExcluded(rule, "body:before")) {
-        // todo: comment
+      if (hasIgnoredSelectors && shouldBeExcluded(rule, ignoredSelectors)) {
         outputRules.common.push(rule);
       } else {
         if (isDesktop) {

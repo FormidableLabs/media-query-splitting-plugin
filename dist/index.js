@@ -1,8 +1,18 @@
 const splitByMediaQuery = require("./splitByMediaQuery");
 
+// todo
+const defaults = {
+  mobileEnd: {px: 568},
+  tabletPortraitStart: {px: 569},
+  tabletPortraitEnd: {px: 768},
+  tabletLandscapeStart: {px: 769},
+  tabletLandscapeEnd: {px: 1024},
+  desktopStart: {px: 1025},
+};
+
 module.exports = class MediaQuerySplittingPlugin {
   constructor(options) {
-    const { media = {}, splitTablet, remBase = 16 } = options || {};
+    const { media = {}, splitTablet = false, remBase = 16, ignoredSelectors = [] } = options || {};
     this.options = {
       media: {
         mobileEnd: media.mobileEnd || 568,
@@ -16,8 +26,9 @@ module.exports = class MediaQuerySplittingPlugin {
           ? media.tabletLandscapeEnd + 1
           : 1025
       },
-      splitTablet: splitTablet !== false,
-      remBase: remBase
+      splitTablet,
+      remBase,
+      ignoredSelectors,
     };
   }
 
@@ -252,7 +263,7 @@ module.exports = class MediaQuerySplittingPlugin {
   }
 
   apply(compiler) {
-    const { media: mediaOptions, splitTablet, remBase } = this.options;
+    const { media: mediaOptions, splitTablet, remBase, ignoredSelectors } = this.options;
     const pluginName = "media-query-splitting-plugin";
 
     compiler.hooks.thisCompilation.tap(pluginName, compilation => {
@@ -330,7 +341,8 @@ module.exports = class MediaQuerySplittingPlugin {
         const splitValue = splitByMediaQuery({
           cssSource,
           mediaOptions,
-          remBase
+          remBase,
+          ignoredSelectors
         });
 
         Object.keys(splitValue).forEach(mediaType => {
